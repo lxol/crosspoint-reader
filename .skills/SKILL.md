@@ -870,3 +870,24 @@ struct PageLine {
 ---
 
 Philosophy: We are building a dedicated e-reader, not a Swiss Army knife. If a feature adds RAM pressure without significantly improving the reading experience, it is Out of Scope.
+
+---
+
+## X3 Fork Notice
+
+This checkout is a personal port of CrossPoint Reader to the **Xteink X3**.
+Upstream targets the X4 (ESP32-C3); the X3 has different hardware. AI sessions
+working in this repo MUST consult the `x3-hw-notes` skill (in the
+`crosspoint-x3` plugin) before proposing any change that touches:
+
+- chip/target in `platformio.ini`
+- framebuffer dimensions or display drivers
+- pin maps, button layout, USB protocol
+- RAM-pressure decisions (X3 may have different limits than the 380 KB documented above)
+
+Default work branch: `x3-port` (tracks `origin/x3-port`).
+Upstream remote: `upstream` → `crosspoint-reader/crosspoint-reader`.
+Sync upstream: invoke the `upstream-sync` skill from the `crosspoint-x3` plugin.
+
+Note: an `xsn/x3_fix` branch already exists in upstream — review it via
+`git log upstream/xsn/x3_fix` before duplicating work.
