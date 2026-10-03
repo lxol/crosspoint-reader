@@ -104,6 +104,8 @@ device branch. Individual relevant fixes can be cherry-picked instead.
 ## Verification before the first stable release
 
 - Open a Russian EPUB, advance pages and check progress after sleep/wake.
+- With no dashboard images cached, open Dashboard and return Home before
+  refreshing; neither the empty screen nor its exit should crash.
 - Open Dashboard, configure the directory, refresh and navigate all three pages.
 - Disable the server and refresh: a bounded failure must preserve cached pages.
 - Cancel Wi-Fi selection and a body transfer; return Home and reopen a book.

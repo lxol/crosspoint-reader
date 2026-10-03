@@ -70,7 +70,7 @@ void DashboardActivity::onEnter() {
 }
 
 void DashboardActivity::onExit() {
-  imageFile.close();
+  if (imageFile) imageFile.close();
   transfer.reset();
   renderer.setOrientation(savedOrientation);
   Activity::onExit();
@@ -294,7 +294,7 @@ void DashboardActivity::render(RenderLock&&) {
       bitmap.parseHeaders() == BmpReaderError::Ok) {
     drawn = renderer.drawBitmap1Bit(bitmap, 0, 0, renderer.getScreenWidth(), renderer.getScreenHeight());
   }
-  imageFile.close();
+  if (imageFile) imageFile.close();
   const auto& metrics = UITheme::getInstance().getMetrics();
   if (!drawn) {
     GUI.drawHeader(renderer, Rect{0, metrics.topPadding, renderer.getScreenWidth(), metrics.headerHeight},

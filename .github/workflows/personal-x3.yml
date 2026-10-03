@@ -51,3 +51,9 @@ jobs:
           name: personal-x3-firmware
           path: build/personal-release/
           if-no-files-found: error
+      - uses: actions/upload-artifact@v6
+        with:
+          name: personal-x3-debug-symbols
+          path: .pio/build/gh_release/firmware.elf
+          include-hidden-files: true
+          if-no-files-found: error
