@@ -1,5 +1,9 @@
 # CrossPoint Reader
 
+**lxol's personal X3 fork:** see [setup, controls, builds and upstream updates](docs/personal-x3.md).
+Branch `x3-personal` is based on CrossPoint 1.6.5 and adds a cached home dashboard.
+The first personal build needs physical X3 validation before a stable release.
+
 [![Fund contributors](https://img.shields.io/badge/%F0%9F%91%91_Fund_contributors-royalty.dev-BB953A?style=for-the-badge&labelColor=1a1a1a)](https://app.royalty.dev/crosspoint-reader/crosspoint-reader)
 
 CrossPoint is open-source e-reader firmware - community-built, fully hackable, free forever. It's maintained by a growing community of developers and readers who believe your device should do what you want - not what a manufacturer decided for you.

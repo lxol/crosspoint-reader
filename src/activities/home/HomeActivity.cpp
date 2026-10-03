@@ -22,11 +22,12 @@
 #include "MappedInputManager.h"
 #include "OpdsServerStore.h"
 #include "RecentBooksStore.h"
+#include "activities/dashboard/DashboardActivity.h"
 #include "components/UITheme.h"
 #include "fontIds.h"
 
 int HomeActivity::getMenuItemCount() const {
-  int count = 4;  // File Browser, Library, File transfer, Settings
+  int count = 5;  // File Browser, Library, File transfer, Dashboard, Settings
   if (!recentBooks.empty()) {
     count += recentBooks.size();
   }
@@ -34,6 +35,18 @@ int HomeActivity::getMenuItemCount() const {
     count++;
   }
   return count;
+}
+
+int HomeActivity::menuFirstVisible(int count, int selected, int& visible) {
+  const auto& metrics = UITheme::getInstance().getMetrics();
+  const int top = metrics.homeTopPadding + metrics.homeCoverTileHeight + metrics.homeMenuTopOffset;
+  const int available = renderer.getScreenHeight() - top - metrics.buttonHintsHeight - metrics.verticalSpacing;
+  const int rowHeight = GUI.getMenuRowHeight(renderer) + metrics.menuSpacing;
+  visible = std::clamp(available / std::max(1, rowHeight), 1, count);
+  menuFirstIndex = std::clamp(menuFirstIndex, 0, count - visible);
+  if (selected < menuFirstIndex) menuFirstIndex = std::max(0, selected);
+  if (selected >= menuFirstIndex + visible) menuFirstIndex = selected - visible + 1;
+  return menuFirstIndex;
 }
 
 void HomeActivity::loadRecentBooks(int maxBooks) {
@@ -319,6 +332,17 @@ void HomeActivity::loop() {
       case HomeMenuItem::FILE_TRANSFER:
         onFileTransferOpen();
         break;
+      case HomeMenuItem::DASHBOARD: {
+        // ActivityManager owns the activity; its palette/config stay off the
+        // task stack and are released when leaving the dashboard.
+        auto dashboard = makeUniqueNoThrow<DashboardActivity>(renderer, mappedInput);
+        if (dashboard) {
+          activityManager.replaceActivity(std::move(dashboard));
+        } else {
+          LOG_ERR("HOME", "OOM: dashboard activity");
+        }
+        break;
+      }
       case HomeMenuItem::SETTINGS_MENU:
         onSettingsOpen();
         break;
@@ -427,11 +451,15 @@ void HomeActivity::loop() {
   // Row height from the theme, not the metrics table: RoundedRaff draws
   // font-derived rows and the touch grid must match the visuals exactly.
   const int menuRowHeight = GUI.getMenuRowHeight(renderer);
-  const auto menuTouch = mappedInput.rowTouch(menuRow, menuTop, menuRowHeight + metrics.menuSpacing, renderedMenuCount,
-                                              0, INT32_MAX, menuRowHeight);
+  int visibleRows;
+  const int firstVisible = menuFirstVisible(
+      renderedMenuCount, selectorIndex - (metrics.homeContinueReadingInMenu ? 0 : static_cast<int>(recentBooks.size())),
+      visibleRows);
+  const auto menuTouch = mappedInput.rowTouch(menuRow, menuTop, menuRowHeight + metrics.menuSpacing, visibleRows, 0,
+                                              INT32_MAX, menuRowHeight);
   if (menuTouch != MappedInputManager::RowTouch::None) {
     const int touchedIndex =
-        metrics.homeContinueReadingInMenu ? menuRow : menuRow + static_cast<int>(recentBooks.size());
+        firstVisible + menuRow + (metrics.homeContinueReadingInMenu ? 0 : static_cast<int>(recentBooks.size()));
     if (menuTouch == MappedInputManager::RowTouch::Down) {
       if (selectorIndex != touchedIndex) {
         selectorIndex = touchedIndex;
@@ -507,9 +535,9 @@ void HomeActivity::render(RenderLock&&) {
                           std::bind(&HomeActivity::storeCoverBuffer, this));
 
   // Build menu items dynamically
-  std::vector<const char*> menuItems = {tr(STR_BROWSE_FILES), tr(STR_LIBRARY), tr(STR_FILE_TRANSFER),
+  std::vector<const char*> menuItems = {tr(STR_BROWSE_FILES), tr(STR_LIBRARY), tr(STR_FILE_TRANSFER), tr(STR_DASHBOARD),
                                         tr(STR_SETTINGS_TITLE)};
-  std::vector<UIIcon> menuIcons = {Folder, Library, Transfer, Settings};
+  std::vector<UIIcon> menuIcons = {Folder, Library, Transfer, Blocks, Settings};
 
   if (hasOpdsServers) {
     menuItems.insert(menuItems.begin() + 2, tr(STR_OPDS_BROWSER));
@@ -522,15 +550,18 @@ void HomeActivity::render(RenderLock&&) {
     menuIcons.insert(menuIcons.begin(), Book);
   }
 
+  const int selectedMenu =
+      metrics.homeContinueReadingInMenu ? selectorIndex : selectorIndex - static_cast<int>(recentBooks.size());
+  int visibleRows;
+  const int firstVisible = menuFirstVisible(static_cast<int>(menuItems.size()), selectedMenu, visibleRows);
   GUI.drawButtonMenu(
       renderer,
       Rect{0, metrics.homeTopPadding + metrics.homeCoverTileHeight + metrics.homeMenuTopOffset, pageWidth,
            pageHeight - (metrics.headerHeight + metrics.homeTopPadding + metrics.verticalSpacing +
                          metrics.homeMenuTopOffset + metrics.buttonHintsHeight)},
-      static_cast<int>(menuItems.size()),
-      metrics.homeContinueReadingInMenu ? selectorIndex : selectorIndex - recentBooks.size(),
-      [&menuItems](int index) { return std::string(menuItems[index]); },
-      [&menuIcons](int index) { return menuIcons[index]; });
+      visibleRows, selectedMenu - firstVisible,
+      [&menuItems, firstVisible](int index) { return std::string(menuItems[firstVisible + index]); },
+      [&menuIcons, firstVisible](int index) { return menuIcons[firstVisible + index]; });
 
   const auto labels = mappedInput.mapLabels(recentBooks.empty() ? "" : tr(STR_RESUME), tr(STR_SELECT), tr(STR_DIR_UP),
                                             tr(STR_DIR_DOWN));

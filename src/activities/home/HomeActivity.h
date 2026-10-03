@@ -14,6 +14,7 @@ class HomeActivity final : public Activity {
   std::unique_ptr<CoverGridHomeUi> coverGridUi;
   ButtonNavigator buttonNavigator;
   int selectorIndex = 0;
+  int menuFirstIndex = 0;
   bool recentsLoading = false;
   bool recentsLoaded = false;
   bool firstRenderDone = false;
@@ -45,6 +46,8 @@ class HomeActivity final : public Activity {
     if (hasOpdsUrl) ++i;
     if (item == HomeMenuItem::FILE_TRANSFER) return i;
     ++i;
+    if (item == HomeMenuItem::DASHBOARD) return i;
+    ++i;
     if (item == HomeMenuItem::SETTINGS_MENU) return i;
     return 0;
   }
@@ -56,6 +59,7 @@ class HomeActivity final : public Activity {
     if (idx == i++) return HomeMenuItem::LIBRARY;
     if (hasOpdsUrl && idx == i++) return HomeMenuItem::OPDS_BROWSER;
     if (idx == i++) return HomeMenuItem::FILE_TRANSFER;
+    if (idx == i++) return HomeMenuItem::DASHBOARD;
     if (idx == i) return HomeMenuItem::SETTINGS_MENU;
     return HomeMenuItem::NONE;
   }
@@ -67,6 +71,7 @@ class HomeActivity final : public Activity {
   void onOpdsBrowserOpen();
 
   int getMenuItemCount() const;
+  int menuFirstVisible(int count, int selected, int& visible);
   bool storeCoverBuffer();    // Store frame buffer for cover image
   bool restoreCoverBuffer();  // Restore frame buffer from stored cover
   void freeCoverBuffer();     // Free the stored cover buffer

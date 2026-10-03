@@ -7,6 +7,7 @@
 #include "HttpDownloader.h"
 #include <Logging.h>
 #include <ReleaseJsonParser.h>
+#include <PersonalVersion.h>
 #include <esp_ota_ops.h>
 #include <esp_wifi.h>
 // clang-format on
@@ -19,7 +20,7 @@
 #include "FirmwareFlasher.h"
 
 namespace {
-constexpr char latestReleaseUrl[] = "https://api.github.com/repos/crosspoint-reader/crosspoint-reader/releases/latest";
+constexpr char latestReleaseUrl[] = "https://api.github.com/repos/lxol/crosspoint-reader/releases/latest";
 }  // namespace
 
 OtaUpdater::OtaUpdaterError OtaUpdater::checkForUpdate() {
@@ -90,42 +91,7 @@ bool OtaUpdater::isUpdateNewer() const {
     return false;
   }
 
-  int currentMajor, currentMinor, currentPatch;
-  int latestMajor, latestMinor, latestPatch;
-
-  const auto currentVersion = CROSSPOINT_VERSION;
-
-  // semantic version check (only match on 3 segments)
-  sscanf(latestVersion.c_str(), "%d.%d.%d", &latestMajor, &latestMinor, &latestPatch);
-  sscanf(currentVersion, "%d.%d.%d", &currentMajor, &currentMinor, &currentPatch);
-
-  /*
-   * Compare major versions.
-   * If they differ, return true if latest major version greater than current major version
-   * otherwise return false.
-   */
-  if (latestMajor != currentMajor) return latestMajor > currentMajor;
-
-  /*
-   * Compare minor versions.
-   * If they differ, return true if latest minor version greater than current minor version
-   * otherwise return false.
-   */
-  if (latestMinor != currentMinor) return latestMinor > currentMinor;
-
-  /*
-   * Check patch versions.
-   */
-  if (latestPatch != currentPatch) return latestPatch > currentPatch;
-
-  // If we reach here, it means all segments are equal.
-  // One final check, if we're on an RC build (contains "-rc"), we should consider the latest version as newer even if
-  // the segments are equal, since RC builds are pre-release versions.
-  if (strstr(currentVersion, "-rc") != nullptr) {
-    return true;
-  }
-
-  return false;
+  return personal_version::isNewer(latestVersion, CROSSPOINT_VERSION);
 }
 
 const std::string& OtaUpdater::getLatestVersion() const { return latestVersion; }

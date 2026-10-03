@@ -1,0 +1,53 @@
+name: Personal X3 firmware
+
+on:
+  push:
+    branches: [x3-personal]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    if: github.repository == 'lxol/crosspoint-reader'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          submodules: recursive
+      - uses: actions/setup-python@v6
+        with:
+          python-version: '3.13'
+      - uses: astral-sh/setup-uv@v7
+      - name: Install pinned build tools
+        run: |
+          uv pip install --system "pioarduino==6.1.19" "littlefs-python>=0.16.0" "fatfs-ng>=0.1.14" \
+            "pyyaml>=6.0.2" "rich-click>=1.8.6" "zopfli>=0.2.2" "intelhex>=2.3.0" "rich>=14.0.0" \
+            "urllib3<2" "cryptography>=45.0.3" "certifi>=2025.8.3" "ecdsa>=0.19.1" \
+            "bitstring>=4.3.1" "reedsolo>=1.5.3,<1.8" "esp-idf-size>=2.0.0" "esp-coredump>=1.14.0"
+      - name: Protocol and update tests
+        run: |
+          g++ -std=c++20 -Wall -Wextra -Werror -I lib test/personal_dashboard/test.cpp -o /tmp/dashboard-tests
+          /tmp/dashboard-tests
+      - name: Static analysis
+        run: |
+          sudo apt-get update -q
+          sudo apt-get install -y cppcheck
+          cppcheck --enable=warning,performance,portability --error-exitcode=1 --inline-suppr \
+            --suppress=missingIncludeSystem --suppress=missingInclude \
+            src/activities/dashboard src/activities/home/HomeActivity.cpp src/network/OtaUpdater.cpp \
+            lib/DashboardProtocol lib/PersonalVersion
+      - name: Pin nested PlatformIO core
+        run: |
+          pio pkg install -e gh_release
+          uv pip install --python ~/.platformio/penv/bin/python "pioarduino==6.1.19"
+      - name: Build
+        run: pio run -e gh_release -j1
+      - name: Package
+        run: python3 scripts/package_personal.py
+      - uses: actions/upload-artifact@v6
+        with:
+          name: personal-x3-firmware
+          path: build/personal-release/
+          if-no-files-found: error
